@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 export default function AdminStudents() {
   const [students, setStudents] = useState([]);
-  const [mentors, setMentors] = useState([]);
+ 
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
