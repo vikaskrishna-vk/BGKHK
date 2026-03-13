@@ -10,7 +10,6 @@ const {
   getAdminAnalytics, getStudentAnalytics,
 } = require('../controllers/controllers');
 const { chat, resumeAnalyze, mockInterview, careerRoadmap, skillGap } = require('../controllers/aiController');
-
 // ─── CERTIFICATE ROUTES ───────────────────────────────────────────────────────
 const certRouter = express.Router();
 certRouter.post('/', protect, authorize('student'), uploadCert.single('certificate'), uploadCertificate);

@@ -1,5 +1,4 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Report = require("../models/Report");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -7,68 +6,53 @@ const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash"
 });
 
-
-/* ============================================================
-   CAREER CHATBOT
-============================================================ */
+/* ================= CHATBOT ================= */
 
 const careerChatbot = async (messages, userProfile) => {
 
   const systemPrompt = `
-You are InternAI, an expert AI career mentor for engineering students in India.
+You are InternAI, an AI career mentor for engineering students in India.
 
-Guide students about:
-
-Tech Domains:
-Frontend, Backend, Full Stack, Data Science, AI/ML, DevOps, Mobile Development.
-
-Help students with:
-- Career paths
-- Skill roadmaps
-- Internship preparation
-- Job market demand
-- Resume improvement
-- Portfolio projects
-- Interview preparation
+Guide about:
+Frontend, Backend, Full Stack, AI/ML, Data Science, DevOps.
 
 User profile:
 ${JSON.stringify(userProfile || {})}
 
-Always provide:
+Always give:
 1. Explanation
-2. Roadmap
-3. Skills required
-4. Learning resources
+2. Skills required
+3. Learning roadmap
+4. Resources
 5. Internship tips
 `;
 
-  const conversation = messages
-    .map((m) => `${m.role}: ${m.content}`)
+  const chatHistory = messages
+    .map(m => `${m.role}: ${m.content}`)
     .join("\n");
 
-  const prompt = `${systemPrompt}\n\nConversation:\n${conversation}`;
+  const prompt = `${systemPrompt}\n\nConversation:\n${chatHistory}`;
 
   const result = await model.generateContent(prompt);
 
-  return result.response.text();
+  const text = result.response.text();
+
+  return text;
 };
 
 
-
-/* ============================================================
-   RESUME ANALYZER
-============================================================ */
+/* ================= RESUME ANALYZER ================= */
 
 const analyzeResume = async (resumeText, targetRole) => {
 
   const prompt = `
-Analyze this resume for ${targetRole || "software engineer"} role.
+Analyze this resume for ${targetRole || "Software Developer"} role.
 
-Return JSON:
+Return JSON only.
 
 {
-"atsScore":0-100,
-"jobReadiness":0-100,
+"atsScore":0,
+"jobReadiness":0,
 "missingKeywords":[],
 "strengths":[],
 "improvements":[],
@@ -81,31 +65,40 @@ ${resumeText}
 
   const result = await model.generateContent(prompt);
 
+  let text = result.response.text();
+
+  text = text.replace(/```json|```/g, "").trim();
+
   try {
-    return JSON.parse(result.response.text());
+    return JSON.parse(text);
   } catch {
-    return { error: "Failed to analyze resume" };
+    return {
+      atsScore: 50,
+      jobReadiness: 50,
+      missingKeywords: [],
+      strengths: [],
+      improvements: ["AI could not parse response"],
+      summary: text
+    };
   }
 };
 
 
-
-/* ============================================================
-   INTERVIEW QUESTION GENERATOR
-============================================================ */
+/* ================= MOCK INTERVIEW ================= */
 
 const generateInterviewQuestions = async (domain, level) => {
 
   const prompt = `
-Generate 8 interview questions for ${domain} role (${level} level).
+Generate 8 interview questions for ${domain} (${level}).
 
 Return JSON array:
+
 [
 {
 "id":1,
 "question":"",
-"type":"",
-"difficulty":"",
+"type":"technical",
+"difficulty":"Medium",
 "expectedAnswer":""
 }
 ]
@@ -113,112 +106,73 @@ Return JSON array:
 
   const result = await model.generateContent(prompt);
 
+  let text = result.response.text();
+
+  text = text.replace(/```json|```/g, "").trim();
+
   try {
-    return JSON.parse(result.response.text());
+    return JSON.parse(text);
   } catch {
     return [];
   }
 };
 
 
+/* ================= CAREER ROADMAP ================= */
 
-/* ============================================================
-   CAREER ROADMAP GENERATOR
-============================================================ */
-
-const generateCareerRoadmap = async (goal, currentSkills, timeframe = "6 months") => {
+const generateCareerRoadmap = async (goal, currentSkills, timeframe) => {
 
   const prompt = `
-Create ${timeframe} roadmap to become ${goal}.
+Create roadmap to become ${goal} in ${timeframe}.
 
 Current skills:
 ${currentSkills?.join(", ") || "Beginner"}
 
 Return JSON:
+
 {
 "goal":"",
+"totalDuration":"",
 "phases":[
 {
+"phase":1,
 "title":"",
+"duration":"",
 "skills":[],
 "projects":[],
 "resources":[]
 }
 ],
-"salaryRange":"",
 "topCompanies":[]
 }
 `;
 
   const result = await model.generateContent(prompt);
 
+  let text = result.response.text();
+
+  text = text.replace(/```json|```/g, "").trim();
+
   try {
-    return JSON.parse(result.response.text());
+    return JSON.parse(text);
   } catch {
     return null;
   }
 };
 
 
+/* ================= SKILL GAP ================= */
 
-/* ============================================================
-   INTERNSHIP REPORT ANALYSIS
-============================================================ */
-
-const analyzeReport = async (reportId) => {
-
-  try {
-
-    const report = await Report.findById(reportId);
-    if (!report) return;
-
-    const prompt = `
-Analyze this internship report.
-
-Tasks: ${report.tasksCompleted}
-Technologies: ${report.technologiesUsed}
-Skills: ${report.skillsLearned}
-
-Return JSON:
-{
-"qualityScore":0-100,
-"authenticityScore":0-100,
-"suspicionFlags":[],
-"summary":""
-}
-`;
-
-    const result = await model.generateContent(prompt);
-
-    const analysis = JSON.parse(result.response.text());
-
-    await Report.findByIdAndUpdate(reportId, {
-      aiAnalysis: {
-        ...analysis,
-        analyzedAt: new Date(),
-      },
-    });
-
-  } catch (err) {
-    console.error("Report analysis error:", err.message);
-  }
-};
-
-
-
-/* ============================================================
-   SKILL GAP ANALYSIS
-============================================================ */
-
-const analyzeSkillGap = async (currentSkills, targetRole) => {
+const analyzeSkillGap = async (skills, role) => {
 
   const prompt = `
-Analyze skill gap for ${targetRole} role.
+Analyze skill gap for ${role}.
 
 Current skills:
-${currentSkills?.join(", ")}
+${skills.join(", ")}
 
 Return JSON:
+
 {
 "missingSkills":[],
 "strongSkills":[],
@@ -229,19 +183,21 @@ Return JSON:
 
   const result = await model.generateContent(prompt);
 
+  let text = result.response.text();
+
+  text = text.replace(/```json|```/g, "").trim();
+
   try {
-    return JSON.parse(result.response.text());
+    return JSON.parse(text);
   } catch {
     return null;
   }
 };
-
 
 module.exports = {
   careerChatbot,
   analyzeResume,
   generateInterviewQuestions,
   generateCareerRoadmap,
-  analyzeReport,
-  analyzeSkillGap,
+  analyzeSkillGap
 };

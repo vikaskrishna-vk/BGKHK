@@ -4,78 +4,110 @@ const {
 } = require('../services/aiService');
 
 // ─── CHATBOT ──────────────────────────────────────────────────────────────────
-const chat = async (req, res, next) => {
+
+
+const chat = async (req, res) => {
+
   try {
+
     const { messages } = req.body;
-    if (!messages?.length) return res.status(400).json({ success: false, message: 'Messages are required' });
 
-    const userProfile = {
-      name: req.user.name,
-      skills: req.user.studentProfile?.skills || [],
-      domains: req.user.studentProfile?.selectedDomains || [],
-      careerGoal: req.user.studentProfile?.careerGoal,
-    };
+    const response = await careerChatbot(messages, req.user);
 
-    const response = await careerChatbot(messages, userProfile);
-    res.json({ success: true, response });
-  } catch (error) {
-    if (error.status === 429) return res.status(429).json({ success: false, message: 'AI service busy. Try again shortly.' });
-    next(error);
+    res.json({
+      success: true,
+      response
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "AI error" });
   }
 };
 
-// ─── RESUME ANALYZER ──────────────────────────────────────────────────────────
-const resumeAnalyze = async (req, res, next) => {
+
+const resumeAnalyze = async (req, res) => {
+
   try {
+
     const { resumeText, targetRole } = req.body;
-    if (!resumeText) return res.status(400).json({ success: false, message: 'Resume text is required' });
 
-    const result = await analyzeResume(resumeText, targetRole);
-    res.json({ success: true, analysis: result });
-  } catch (error) {
-    next(error);
+    const analysis = await analyzeResume(resumeText, targetRole);
+
+    res.json({
+      success: true,
+      analysis
+    });
+
+  } catch (err) {
+
+    res.status(500).json({ message: "Resume analysis failed" });
+
   }
 };
 
-// ─── MOCK INTERVIEW ───────────────────────────────────────────────────────────
-const mockInterview = async (req, res, next) => {
-  try {
-    const { domain, level = 'Entry Level', count = 8 } = req.body;
-    if (!domain) return res.status(400).json({ success: false, message: 'Domain is required' });
 
-    const questions = await generateInterviewQuestions(domain, level, count);
-    res.json({ success: true, domain, level, questions });
-  } catch (error) {
-    next(error);
+const mockInterview = async (req, res) => {
+
+  try {
+
+    const { domain, level } = req.body;
+
+    const questions = await generateInterviewQuestions(domain, level);
+
+    res.json({
+      success: true,
+      questions
+    });
+
+  } catch (err) {
+
+    res.status(500).json({ message: "Interview generation failed" });
+
   }
 };
 
-// ─── CAREER ROADMAP ───────────────────────────────────────────────────────────
-const careerRoadmap = async (req, res, next) => {
+
+const careerRoadmap = async (req, res) => {
+
   try {
+
     const { goal, timeframe } = req.body;
-    if (!goal) return res.status(400).json({ success: false, message: 'Career goal is required' });
 
-    const currentSkills = req.user.studentProfile?.skills || [];
-    const roadmap = await generateCareerRoadmap(goal, currentSkills, timeframe);
-    res.json({ success: true, roadmap });
-  } catch (error) {
-    next(error);
+    const roadmap = await generateCareerRoadmap(goal, [], timeframe);
+
+    res.json({
+      success: true,
+      roadmap
+    });
+
+  } catch (err) {
+
+    res.status(500).json({ message: "Roadmap generation failed" });
+
   }
 };
 
-// ─── SKILL GAP ────────────────────────────────────────────────────────────────
-const skillGap = async (req, res, next) => {
+
+const skillGap = async (req, res) => {
+
   try {
-    const { targetRole } = req.body;
-    if (!targetRole) return res.status(400).json({ success: false, message: 'Target role is required' });
 
-    const currentSkills = req.user.studentProfile?.skills || [];
-    const analysis = await analyzeSkillGap(currentSkills, targetRole);
-    res.json({ success: true, analysis });
-  } catch (error) {
-    next(error);
+    const { targetRole } = req.body;
+
+    const analysis = await analyzeSkillGap([], targetRole);
+
+    res.json({
+      success: true,
+      analysis
+    });
+
+  } catch (err) {
+
+    res.status(500).json({ message: "Skill gap analysis failed" });
+
   }
 };
+
 
 module.exports = { chat, resumeAnalyze, mockInterview, careerRoadmap, skillGap };

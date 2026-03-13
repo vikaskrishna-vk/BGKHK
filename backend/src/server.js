@@ -117,7 +117,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/skills", skillRoutes);
 app.use("/api/study", studyRoutes);
 app.use("/api/analytics", analyticsRoutes);
-
+app.use("/api/ai", require("./routes/aiRoutes"));
 // ─── HEALTH CHECK ────────────────────────────────────
 app.get("/api/health", (req, res) => {
   res.json({
